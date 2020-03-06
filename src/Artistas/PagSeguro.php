@@ -23,7 +23,9 @@ class PagSeguro extends PagSeguroClient
      *
      * @var array
      */
-    private $shippingAddress = [];
+    private $shippingAddress = [
+        'shippingAddressRequired' => 'false',
+    ];
 
     /**
      * Endereço de cobrança do comprador.
@@ -206,14 +208,18 @@ class PagSeguro extends PagSeguroClient
      */
     private function validateShippingAddress(array $shippingAddress)
     {
+        if (isset($shippingAddress['shippingAddressRequired'])) {
+            return;
+        }
+
         $rules = [
-          'shippingAddressStreet'     => 'required|max:80',
-          'shippingAddressNumber'     => 'required|max:20',
-          'shippingAddressComplement' => 'max:40',
-          'shippingAddressDistrict'   => 'required|max:60',
-          'shippingAddressPostalCode' => 'required|digits:8',
-          'shippingAddressCity'       => 'required|min:2|max:60',
-          'shippingAddressState'      => 'required|min:2|max:2',
+            'shippingAddressStreet'     => 'required|max:80',
+            'shippingAddressNumber'     => 'required|max:20',
+            'shippingAddressComplement' => 'max:40',
+            'shippingAddressDistrict'   => 'required|max:60',
+            'shippingAddressPostalCode' => 'required|digits:8',
+            'shippingAddressCity'       => 'required|min:2|max:60',
+            'shippingAddressState'      => 'required|min:2|max:2',
         ];
 
         $this->validate($shippingAddress, $rules);
@@ -302,7 +308,7 @@ class PagSeguro extends PagSeguroClient
     private function validateItems($items)
     {
         $rules = [];
-        for ($cont = 1; $cont < $this->itemsCount; $cont++) {
+        for ($cont = 1; $cont <= $this->itemsCount; $cont++) {
             $rules = array_merge($rules, [
               'itemId'.$cont          => 'required|max:100',
               'itemDescription'.$cont => 'required|max:100',
@@ -415,6 +421,22 @@ class PagSeguro extends PagSeguroClient
         $data = array_filter(array_merge($config, $paymentSettings, $this->senderInfo, $this->shippingAddress, $this->items, $this->creditCardHolder, $this->billingAddress, $this->shippingInfo));
 
         return $this->sendTransaction($data);
+    }
+
+    /**
+     * Cancela uma transação.
+     *
+     * @param string $transactionCode
+     *
+     * @return mixed
+     */
+    public function cancelTransaction($transactionCode)
+    {
+        return $this->sendTransaction([
+            'email'           => $this->email,
+            'token'           => $this->token,
+            'transactionCode' => $transactionCode,
+        ], $this->url['cancelTransaction']);
     }
 
     /**

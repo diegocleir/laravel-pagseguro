@@ -47,6 +47,13 @@ class PagSeguroRecorrente extends PagSeguroClient
     private $plan;
 
     /**
+     * Código da pré-aprovação.
+     *
+     * @var string
+     */
+    private $preApprovalCode;
+
+    /**
      * Identificador do tipo de método de pagamento.
      *
      * @var string
@@ -75,6 +82,7 @@ class PagSeguroRecorrente extends PagSeguroClient
             'preApprovalExpirationValue'        => $this->sanitizeNumber($preApprovalRequest, 'preApprovalExpirationValue'),
             'preApprovalExpirationUnit'         => $this->sanitize($preApprovalRequest, 'preApprovalExpirationUnit'),
             'maxUses'                           => $this->sanitizeNumber($preApprovalRequest, 'maxUses'),
+            'reference'                         => $this->reference,
         ];
 
         $this->validatePreApprovalRequest($preApprovalRequest);
@@ -142,6 +150,20 @@ class PagSeguroRecorrente extends PagSeguroClient
     public function setPlan($plan)
     {
         $this->plan = $this->sanitize($plan);
+
+        return $this;
+    }
+
+    /**
+     * Define um code de uma pré-aprovação no pagseguro.
+     *
+     * @param string $plan
+     *
+     * @return $this
+     */
+    public function setPreApprovalCode($preApprovalCode)
+    {
+        $this->preApprovalCode = $this->sanitize($preApprovalCode);
 
         return $this;
     }
@@ -337,7 +359,7 @@ class PagSeguroRecorrente extends PagSeguroClient
      *
      * @param array $paymentSettings
      *
-     * @return mixed
+     * @return string
      */
     public function sendPreApproval(array $paymentSettings)
     {
@@ -356,7 +378,7 @@ class PagSeguroRecorrente extends PagSeguroClient
      *
      * @param array $paymentSettings
      *
-     * @return mixed
+     * @return string
      */
     public function sendPreApprovalPaymentMethod(array $paymentSettings)
     {
@@ -367,7 +389,7 @@ class PagSeguroRecorrente extends PagSeguroClient
 
         $data = $this->formatPreApprovalPaymentMethodData($paymentSettings);
 
-        return (string) $this->sendJsonTransaction($data, $this->url['preApproval'].'/'.$this->plan.'/payment-method', 'PUT');
+        return (string) $this->sendJsonTransaction($data, $this->url['preApproval'].'/'.$this->preApprovalCode.'/payment-method', 'PUT');
     }
 
     /**
@@ -541,5 +563,106 @@ class PagSeguroRecorrente extends PagSeguroClient
     public function paymentOrders($preApprovalCode)
     {
         return $this->sendJsonTransaction([], $this->url['preApproval'].'/'.$preApprovalCode.'/payment-orders', 'GET');
+    }
+
+    /**
+     * Consulta um pagamento recorrente.
+     *
+     * @param string $preApprovalCode
+     *
+     * @return \SimpleXMLElement
+     */
+    public function showPreApproval($preApprovalCode)
+    {
+        return $this->sendJsonTransaction([], $this->url['preApproval'].'/'.$preApprovalCode, 'GET');
+    }
+
+    /**
+     * Dá desconto na próxima cobrança recorrente.
+     *
+     * @param array $discountSettings
+     *
+     * @return string
+     */
+    public function sendDiscount(array $discountSettings)
+    {
+        $discountSettings = [
+          'type'      => $this->sanitize($discountSettings, 'type'),
+          'value'     => $this->sanitize($discountSettings, 'value'),
+        ];
+
+        $this->validateDiscountSettings($discountSettings);
+        $data = $this->formatDiscountMethodData($discountSettings);
+
+        return (string) $this->sendJsonTransaction($data, $this->url['preApproval'].'/'.$this->preApprovalCode.'/discount', 'PUT');
+    }
+
+    /**
+     * Valida os dados contidos na array de desconto na próxima cobrança.
+     *
+     * @param array $discountSettings
+     */
+    private function validateDiscountSettings(array $discountSettings)
+    {
+        $rules = [
+          'type'  => 'required|in:DISCOUNT_PERCENT,DISCOUNT_AMOUNT',
+          'value' => 'required|numeric|min:0',
+        ];
+
+        $this->validate($discountSettings, $rules);
+    }
+
+    /**
+     * Formata os dados para enviar o desconto no próximo pagamento.
+     *
+     * @param array $discountSettings
+     *
+     * @return array
+     */
+    private function formatDiscountMethodData(array $discountSettings)
+    {
+        $data = [
+            'type'  => $discountSettings['type'],
+            'value' => number_format($discountSettings['value'], 2, '.', ''),
+        ];
+
+        return $data;
+    }
+
+    /**
+     * Formata os dados para editar um plano ativo.
+     *
+     * @param array $editPaymentRecorrente
+     *
+     * @return array
+     */
+    private function formatEditPaymentRecorrente(array $editPaymentRecorrente)
+    {
+        $data = [
+            'updateSubscriptions' => $editPaymentRecorrente['updateSubscriptions'],
+            'amountPerPayment'    => number_format($editPaymentRecorrente['amountPerPayment'], 2, '.', ''),
+        ];
+
+        return $data;
+    }
+
+    /**
+     * Retentativa de pagamento - Permite a retentativa de uma cobrança não paga ou não processada.
+     *
+     * @param string $orderCode
+     *
+     * @return \SimpleXMLElement
+     */
+    public function sendRetentative(string $orderCode)
+    {
+        return $this->sendJsonTransaction([], $this->url['preApproval'].'/'.$this->preApprovalCode.'/payment-orders/'.$orderCode.'/payment');
+    }
+
+    // Edição de Plano - Permite editar um plano já ativo
+    public function editPaymentRecorrente(array $editPaymentRecorrente)
+    {
+        $data = $this->formatEditPaymentRecorrente($editPaymentRecorrente);
+
+        return (string) $this->sendJsonTransaction($data, $this->url['preApproval'].'/request/'.$this->preApprovalCode.'/payment', 'PUT');
     }
 }

@@ -15,10 +15,20 @@ class PagSeguroServiceProvider extends ServiceProvider
         $this->app->bind('pagseguro_recorrente', function ($app) {
             return new PagSeguroRecorrente($app['log'], $app['validator']);
         });
+
+        $this->app->bind('pagseguro_boleto', function ($app) {
+            return new PagSeguroBoleto($app['log'], $app['validator']);
+        });
     }
 
     public function boot()
     {
+        if (!method_exists($this->app, 'routesAreCached')) {
+            require __DIR__.'/routes.php';
+
+            return; // lumen
+        }
+
         if (!$this->app->routesAreCached()) {
             require __DIR__.'/routes.php';
         }

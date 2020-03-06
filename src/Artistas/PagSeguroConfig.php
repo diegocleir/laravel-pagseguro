@@ -2,8 +2,8 @@
 
 namespace Artistas\PagSeguro;
 
-use Illuminate\Log\Writer as Log;
 use Illuminate\Validation\Factory as Validator;
+use Psr\Log\LoggerInterface as Log;
 
 class PagSeguroConfig
 {
@@ -73,10 +73,10 @@ class PagSeguroConfig
      */
     private function setEnvironment()
     {
-        $this->sandbox = config('pagseguro.sandbox', true);
-        $this->email = config('pagseguro.email', '');
-        $this->token = config('pagseguro.token', '');
-        $this->notificationURL = config('pagseguro.notificationURL', '');
+        $this->sandbox = config('pagseguro.sandbox', env('PAGSEGURO_SANDBOX', true));
+        $this->email = config('pagseguro.email', env('PAGSEGURO_EMAIL', ''));
+        $this->token = config('pagseguro.token', env('PAGSEGURO_TOKEN', ''));
+        $this->notificationURL = config('pagseguro.notificationURL', env('PAGSEGURO_NOTIFICATION', ''));
     }
 
     /**
@@ -90,11 +90,13 @@ class PagSeguroConfig
             'preApprovalRequest'            => 'https://ws.'.$sandbox.'pagseguro.uol.com.br/v2/pre-approvals/request',
             'preApproval'                   => 'https://ws.'.$sandbox.'pagseguro.uol.com.br/pre-approvals',
             'preApprovalCancel'             => 'https://ws.'.$sandbox.'pagseguro.uol.com.br/v2/pre-approvals/cancel/',
+            'cancelTransaction'             => 'https://ws.'.$sandbox.'pagseguro.uol.com.br/v2/transactions/cancels',
             'preApprovalNotifications'      => 'https://ws.'.$sandbox.'pagseguro.uol.com.br/v2/pre-approvals/notifications/',
             'session'                       => 'https://ws.'.$sandbox.'pagseguro.uol.com.br/v2/sessions',
             'transactions'                  => 'https://ws.'.$sandbox.'pagseguro.uol.com.br/v2/transactions',
             'notifications'                 => 'https://ws.'.$sandbox.'pagseguro.uol.com.br/v3/transactions/notifications/',
             'javascript'                    => 'https://stc.'.$sandbox.'pagseguro.uol.com.br/pagseguro/api/v2/checkout/pagseguro.directpayment.js',
+            'boletos'                       => 'https://ws.pagseguro.uol.com.br/recurring-payment/boletos',
         ];
 
         $this->url = $url;
